@@ -1,0 +1,99 @@
+So, let's set up the data import for Facebook ad expenses into Google Analytics UA. To do this, follow these steps:
+
+1. Register and log in to PythonAnywhere.
+2. Open the Consoles tab, click on the Bash link next to Other.
+3. In the opened window, install additional packages by executing the following commands one by one:
+
+   1) pip3 install --user facebook_business
+   2) pip3 install --user facebookads
+   3) pip3 install --user --upgrade google-api-python-client
+
+4. Go to the Files tab, enter "fb_cost_to_ga.py" as the file name next to the New file button, and create a new file.
+5. In the newly created file, replace the placeholders with your values:
+
+   - MY_APP_ID: Application ID for Facebook API.
+   - MY_APP_SECRET: Application secret for Facebook API.
+   - MY_LONG_LIVED_ACCESS_TOKEN: Long-lived access token for accessing expense data from the ad account.
+   - AD_ACCOUNT_ID: Ad account ID on Facebook.
+   - PATH_TO_SERVICE_ACCOUNT_KEY: Path to the Google Cloud JSON service account key.
+   - GA_PROPERTY_ID: Google Analytics property ID to upload expenses.
+   - GA_DATA_SET_ID: Google Analytics dataset ID to upload expenses.
+   - FB_CSV_FILEPATH: Name of the .csv file (e.g., fb_cost_data.csv) for the latest expense data.
+
+6. Obtain MY_APP_ID and MY_APP_SECRET by creating an app on https://developers.facebook.com/apps/.
+7. Retrieve MY_LONG_LIVED_ACCESS_TOKEN by exchanging a short-lived token using the provided link and your values.
+8. Find AD_ACCOUNT_ID in the URL parameter "act" when working with the Facebook ad account.
+9. Create a Google Cloud project and enable Google Analytics API in the APIs & Services tab.
+10. Create a service account in IAM & admin -> Service accounts and generate a JSON key.
+11. Upload the downloaded JSON key file to PythonAnywhere and use its filename for PATH_TO_SERVICE_ACCOUNT_KEY.
+12. Get GA_PROPERTY_ID from the Property Settings tab in Google Analytics.
+13. Obtain GA_DATA_SET_ID from the GA interface after creating a dataset.
+14. Replace configurations with your values and manually run the code by clicking the Run button.
+15. If the script runs without errors, the results will be visible in GA.
+16. Set up automated execution by creating a task in the Tasks tab with the script's path and schedule.
+
+Please note that this solution has some limitations and requires periodic updates due to token expiration and potential data differences between Facebook and GA. Additionally, this setup imports expenses only at the source, campaign, and channel levels. To ensure proper matching, Facebook Ads campaign names should match the utm_campaign parameter values used in their links.
+
+
+# Tutorial: Transferring Data from Facebook Ads to Google Sheets and Google Looker Studio
+
+In this tutorial, you will learn how to extract data from Facebook Ads using its API, transfer the data to Google Sheets, and then connect it to Google Looker Studio for analysis.
+
+## Prerequisites
+
+- Facebook Ads Account
+- Google Account
+- Google Cloud Platform Account (for API keys and setup)
+
+## Step 1: Generate API Keys
+
+1. Create a Facebook Developer App:
+   - Go to https://developers.facebook.com/apps/ and create a new app.
+   - Note down the **App ID** and **App Secret** from the app's settings page.
+
+2. Set Up Google Cloud Platform:
+   - Go to https://console.cloud.google.com/ and create a new project.
+   - Enable the **Google Sheets API** and **Google Drive API** for the project.
+   - Create a new **Service Account** in "IAM & admin" -> "Service accounts".
+   - Download the JSON key file for the service account.
+
+## Step 2: Transfer Data to Google Sheets
+
+1. Install Required Libraries:
+   - Use a programming language like Python to access the Facebook Ads API and Google Sheets API.
+   - Install libraries like `facebook_business`, `google-auth`, and `gspread`.
+
+2. Access Facebook Ads API:
+   - Use the generated **App ID**, **App Secret**, and a user token to access the Facebook Ads API.
+   - Fetch the required data (e.g., ad campaign metrics) using the API.
+
+3. Store Data in Google Sheets:
+   - Use the downloaded JSON key file for authentication.
+   - Create a new Google Sheet or use an existing one.
+   - Convert the fetched data to JSON format and write it to the Google Sheet using the `gspread` library.
+
+## Step 3: Connect to Google Looker Studio
+
+1. Set Up Google Looker Studio:
+   - If not done already, create an account on Google Looker Studio (Looker).
+   - Create a new connection to Google Sheets in Looker.
+
+2. Configure Connection:
+   - Provide the credentials (Google Sheets API credentials) and access information for the Google Sheet containing your data.
+
+3. Model Your Data:
+   - Create a LookML model in Looker for the connected Google Sheet data.
+   - Define dimensions, measures, and explore relationships between data fields.
+
+4. Create Dashboards:
+   - Use Looker's visualization tools to create dashboards, reports, and visualizations based on the modeled data.
+
+## Conclusion
+
+By following this tutorial, you have successfully:
+
+- Generated API keys for Facebook Ads and Google Cloud Platform.
+- Transferred data from Facebook Ads to Google Sheets.
+- Connected the Google Sheet data to Google Looker Studio and created insights.
+
+Feel free to customize the data extraction, transformation, and visualization based on your specific needs and business requirements. This tutorial provides a foundational framework for integrating Facebook Ads data into a data analysis and visualization platform.

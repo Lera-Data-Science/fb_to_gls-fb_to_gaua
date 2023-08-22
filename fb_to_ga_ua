@@ -1,0 +1,130 @@
+# -*- coding: utf-8 -*-
+
+"""
+First of all you must install such libraries:
+
+pip3 install --user facebook_business
+pip3 install --user facebookads
+pip3 install --user pandas
+pip3 install --user --upgrade google-api-python-client
+"""
+from datetime import datetime, timedelta
+
+import numpy as np
+import pandas as pd
+
+from facebook_business.api import FacebookAdsApi
+from facebook_business.adobjects.adaccount import AdAccount
+
+from apiclient.discovery import build
+from oauth2client.service_account import ServiceAccountCredentials
+from apiclient.http import MediaFileUpload
+
+
+MY_APP_ID = 'XXXXXXXXXXXXXXXXX'
+MY_APP_SECRET = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+MY_LONG_LIVED_ACCESS_TOKEN = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+AD_ACCOUNT_ID = 'XXXXXXXXXXXXXXXXX'
+
+PATH_TO_SERVICE_ACCOUNT_KEY = 'XXXXXXXXXXXXXXXXX.json'
+GA_PROPERTY_ID = 'UA-XXXXXXXXXXXXXXXXX-X'
+GA_DATA_SET_ID = 'XXXXXXXXXXXXXXXXX'
+
+FB_CSV_FILEPATH = "XXXXXXXXXXXXXXXXX.csv"
+
+def get_facebook_client(my_app_id, my_app_secret, my_access_token, ad_account_id):
+    FacebookAdsApi.init(my_app_id, my_app_secret, my_access_token)
+    account = AdAccount('act_{}'.format(ad_account_id))
+    return account
+
+def get_cost_data_from_facebook_ads(fb_account, date):
+
+    params = {
+        'fields': [
+            'campaign_name',
+            'impressions',
+            'spend',
+            'account_currency',
+            'outbound_clicks',
+        ],
+        'level': 'campaign',
+        'time_range': {
+            'since': date,
+            'until': date
+        }
+    }
+
+    return fb_account.get_insights(params=params)
+
+def parse_outbound_clicks_value(value):
+    if value is np.nan:
+        return 0
+    else:
+        for i in value:
+            if i['action_type'] == 'outbound_click':
+                return i.get('value',0)
+
+def generate_csv_for_ga_upload(stats, filepath):
+
+    raw_data_frame = pd.DataFrame(list(stats))
+    raw_data_frame['ga:source'] = 'facebook'
+    raw_data_frame['ga:medium'] = 'cpc'
+    raw_data_frame['ga:campaign'] = raw_data_frame['campaign_name']
+    raw_data_frame['ga:date'] = pd.to_datetime(raw_data_frame['date_start']).dt.strftime('%Y%m%d')
+    raw_data_frame['ga:adCost'] = raw_data_frame['spend'].astype(float)
+    raw_data_frame['ga:impressions'] = raw_data_frame['impressions'].astype('int64')
+    raw_data_frame['ga:adClicks'] = raw_data_frame['outbound_clicks'].apply(parse_outbound_clicks_value)
+    raw_data_frame = raw_data_frame[
+        ['ga:source','ga:medium','ga:campaign','ga:date',
+        'ga:adCost','ga:impressions','ga:adClicks']
+    ]
+    raw_data_frame.to_csv(filepath, index=False, encoding="utf-8")
+
+def get_ga_service(api_name, api_version, scopes, key_file_location):
+
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(
+            key_file_location, scopes=scopes)
+
+    # Build the service object.
+    service = build(api_name, api_version, credentials=credentials)
+
+    return service
+
+def upload_cost_data_to_ga(service, ga_property_id, ga_data_set_id, path_to_csv):
+
+    media = MediaFileUpload(path_to_csv,
+                          mimetype='application/octet-stream',
+                          resumable=False)
+
+    service.management().uploads().uploadData(
+      accountId=ga_property_id.split('-')[1],
+      webPropertyId=ga_property_id,
+      customDataSourceId=ga_data_set_id,
+      media_body=media).execute()
+
+def main():
+
+    try:
+        # Get yesterday cost data from Facebook Ads
+        yesterday = datetime.today() - timedelta(days=1)
+        yesterday = yesterday.strftime('%Y-%m-%d')
+        facebook_client = get_facebook_client(MY_APP_ID, MY_APP_SECRET,
+                                              MY_LONG_LIVED_ACCESS_TOKEN,
+                                              AD_ACCOUNT_ID)
+        stats = get_cost_data_from_facebook_ads(facebook_client, yesterday)
+
+        # Prepare data to GA data set schema
+        generate_csv_for_ga_upload(stats, FB_CSV_FILEPATH)
+
+        #Upload cost data to GA
+        scope = ['https://www.googleapis.com/auth/analytics.edit']
+        service = get_ga_service('analytics', 'v3', scope, PATH_TO_SERVICE_ACCOUNT_KEY)
+        upload_cost_data_to_ga(service, GA_PROPERTY_ID, GA_DATA_SET_ID, FB_CSV_FILEPATH)
+
+        print('Cost data is uploaded to {}.'.format(GA_PROPERTY_ID))
+
+    except Exception as e:
+        print("Something wrong... {}".format(e))
+
+if __name__ == '__main__':
+    main()
